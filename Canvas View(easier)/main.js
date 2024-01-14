@@ -5,13 +5,14 @@ const height = canvas.height;
 const fullwidth = 1280;
 const fullheight = 1280;
 let obstacles = [];
-let obstaclerows = 9;
+let obstaclerows = 8;
 let currentframe = {xstart: 320, xend: 960, ystart: fullheight, yend: 640};
 let rightPressed = false;
 let leftPressed = false;
 let upPressed = false;
 let downPressed = false;
 let gravity = 0.016;
+let collision = false;
 
 class Obstacle{
     constructor(x, y){
@@ -49,7 +50,6 @@ class Player{
     move(){
         frameMove();
         this.dx = 0;
-        if(this.dy != 0 || this.y != currentframe.ystart) player.dy += gravity;
         if (rightPressed == true) {
             if (this.x + this.w > canvas.width) {
               this.dx = 0;
@@ -78,11 +78,17 @@ for(let i = 0; i <= obstaclerows; i++){
     if(i % 2 == 0){
         for(let j = 160; j <= 1200; j += 160){
             let obj = new Obstacle(j, fullheight - fullheight / obstaclerows * (i + 1));
+            if(obj.y <= 100){
+                continue;
+            }
             obstacles.push(obj);
         }
     } else{
         for(let j = 240; j < 1200; j += 160){
             let obj = new Obstacle(j, fullheight - fullheight / obstaclerows * (i + 1));
+            if(obj.y <= 100){
+                continue;
+            }
             obstacles.push(obj);
         }
     }
@@ -121,13 +127,13 @@ function frameMove(){
     }
     //FOR Y, only raise canvas view if player is above middle
     if(player.worldy <= 960 && player.worldy >= 320){
-        currentframe.ystart += player.dy;
-        currentframe.yend += player.dy;
+        currentframe.ystart = player.worldy + 320;
+        currentframe.yend = player.worldy - 320;
         player.worldy += player.dy;
     } else{
-            player.y += player.dy;
-            player.worldy += player.dy;
-    }   
+        player.worldy += player.dy;
+        player.y += player.dy;
+    }
 }
 
 function detectCollisions() {
@@ -135,27 +141,34 @@ function detectCollisions() {
         if (
             player.x + player.w > obstacles[i].x - currentframe.xstart &&
             player.x < obstacles[i].x - currentframe.xstart + obstacles[i].width &&
-            player.y + player.h > obstacles[i].y - currentframe.yend &&
-            player.y < obstacles[i].y - currentframe.yend + obstacles[i].height
+            player.y + player.h >= obstacles[i].y - currentframe.yend &&
+            player.y <= obstacles[i].y - currentframe.yend + obstacles[i].height
         ) {
             let inity = player.y;
-            if(player.worldy <= 960 && player.worldy >= 320){
-                currentframe.ystart += obstacles[i].y - currentframe.yend - player.h - inity;
-                currentframe.yend += obstacles[i].y - currentframe.yend - player.h - inity;
-            }
-            player.y = obstacles[i].y - currentframe.yend - player.h;
+            player.y += obstacles[i].y - currentframe.yend - player.h - inity;
             player.worldy += obstacles[i].y - currentframe.yend - player.h - inity;
-            player.dy = 0;
+            if(player.worldy <= 960 && player.worldy >= 320){
+                currentframe.ystart = player.worldy + 320;
+                currentframe.yend = player.worldy - 320;
+            }
+            if(collision == false){
+                player.dy = 0;
+            }
+            collision = true;
             break;
         }
+        if(i == obstacles.length - 1)collision = false;
     }
 }
 
 function draw(){
     ctx.clearRect(0, 0, width, height);
     drawObjects();
-    player.move();
     detectCollisions();
+    if(collision == false){
+        if((player.dy != 0 || player.worldy <= currentframe.ystart)) player.dy += gravity;
+    }
+    player.move();
     requestAnimationFrame(draw);
 }
 draw();
